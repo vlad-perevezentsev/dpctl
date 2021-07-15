@@ -35,6 +35,8 @@ namespace
 {
 // Create wrappers for C Binding types (see CBindingWrapping.h)
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(event, DPCTLSyclEventRef)
+DEFINE_SIMPLE_CONVERSION_FUNCTIONS(vector_class<DPCTLSyclEventRef>,
+                                   DPCTLEventVectorRef)
 } /* end of anonymous namespace */
 
 __dpctl_give DPCTLSyclEventRef DPCTLEvent_Create()
@@ -90,4 +92,40 @@ DPCTLSyclBackendType DPCTLEvent_GetBackend(__dpctl_keep DPCTLSyclEventRef ERef)
         std::cerr << "Backend cannot be looked up for a NULL event\n";
     }
     return BTy;
+}
+
+__dpctl_give DPCTLEventVectorRef
+DPCTLEvent_GetWaitList(__dpctl_keep DPCTLSyclEventRef ERef)
+{
+    auto E = unwrap(ERef);
+    if (!E) {
+        std::cerr << "Cannot get wait list as input is a nullptr\n";
+        return nullptr;
+    }
+    vector_class<DPCTLSyclEventRef> *EventsVectorPtr = nullptr;
+    try {
+        EventsVectorPtr = new vector_class<DPCTLSyclEventRef>();
+    } catch (std::bad_alloc const &ba) {
+        // \todo log error
+        std::cerr << ba.what() << '\n';
+        return nullptr;
+    }
+    try {
+        auto Events = E->get_wait_list();
+        EventsVectorPtr->reserve(Events.size());
+        for (const auto &Ev : Events) {
+            EventsVectorPtr->emplace_back(wrap(new event(Ev)));
+        }
+        return wrap(EventsVectorPtr);
+    } catch (std::bad_alloc const &ba) {
+        delete EventsVectorPtr;
+        // \todo log error
+        std::cerr << ba.what() << '\n';
+        return nullptr;
+    } catch (const runtime_error &re) {
+        delete EventsVectorPtr;
+        // \todo log error
+        std::cerr << re.what() << '\n';
+        return nullptr;
+    }
 }

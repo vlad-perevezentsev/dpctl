@@ -26,14 +26,18 @@
 
 #include "Support/CBindingWrapping.h"
 #include "dpctl_sycl_event_interface.h"
+#include "dpctl_sycl_types.h"
 #include <CL/sycl.hpp>
 #include <gtest/gtest.h>
+#include <typeinfo>
 
 using namespace cl::sycl;
 
 namespace
 {
 DEFINE_SIMPLE_CONVERSION_FUNCTIONS(event, DPCTLSyclEventRef)
+DEFINE_SIMPLE_CONVERSION_FUNCTIONS(vector_class<DPCTLSyclEventRef>,
+                                   DPCTLEventVectorRef)
 } // namespace
 
 struct TestDPCTLSyclEventInterface : public ::testing::Test
@@ -99,4 +103,13 @@ TEST_F(TestDPCTLSyclEventInterface, CheckGetBackend_Invalid)
     DPCTLSyclBackendType Bty = DPCTL_UNKNOWN_BACKEND;
     EXPECT_NO_FATAL_FAILURE(Bty = DPCTLEvent_GetBackend(E));
     EXPECT_TRUE(Bty == DPCTL_UNKNOWN_BACKEND);
+}
+
+TEST_F(TestDPCTLSyclEventInterface, CheckGetWaitList)
+{
+    DPCTLEventVectorRef EVRef = nullptr;
+    EXPECT_NO_FATAL_FAILURE(EVRef = DPCTLEvent_GetWaitList(ERef));
+    ASSERT_TRUE(EVRef);
+    EXPECT_NO_FATAL_FAILURE(DPCTLEventVector_Clear(EVRef));
+    EXPECT_NO_FATAL_FAILURE(DPCTLEventVector_Delete(EVRef));
 }
